@@ -13,10 +13,10 @@ The GDT configuration resides in `hal/gdt.c` and `hal/gdt.h`. It defines 6 segme
 | 2 | `0x10` | Kernel Data (Ring 0) | `0x00000000` | `0xFFFFFFFF` | `0x92` (Present, Ring 0, Data, Read/Write) | `0xCF` (4KB gran, 32-bit) |
 | 3 | `0x18` | User Code (Ring 3) | `0x00000000` | `0xFFFFFFFF` | `0xFA` (Present, Ring 3, Code, Exec/Read) | `0xCF` (4KB gran, 32-bit) |
 | 4 | `0x20` | User Data (Ring 3) | `0x00000000` | `0xFFFFFFFF` | `0xF2` (Present, Ring 3, Data, Read/Write) | `0xCF` (4KB gran, 32-bit) |
-| 5 | `0x28` | Task State Segment (TSS) | `&tss_entry` | `sizeof(tss)` | `0xE9` (Present, Ring 3 Accessible, 32-bit TSS) | `0x00` (Byte gran) |
+| 5 | `0x28` | Task State Segment (TSS) | `&tss_entry` | `sizeof(tss) - 1` | `0x89` (Present, Ring 0, available 32-bit TSS) | `0x00` (Byte gran) |
 
 ### Task State Segment (TSS)
-The TSS holds the kernel stack pointer (`esp0` and `ss0 = 0x10`) required for hardware privilege transitions. When an interrupt occurs in Ring 3, the CPU automatically switches to `esp0` stored in the TSS.
+The TSS holds the kernel stack pointer (`esp0` and `ss0 = 0x10`) required for hardware privilege transitions. `gdt_init()` currently initializes `esp0` to `0x00140000`; the scheduler does not yet update it to a per-task kernel stack. See [Processes, Scheduling, and Ring 3](../kernel/processes.md) for the current prototype and its limits.
 
 ## 8259 PIC Remapping
 

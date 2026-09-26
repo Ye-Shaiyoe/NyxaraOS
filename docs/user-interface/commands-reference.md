@@ -57,7 +57,7 @@ Nyxara OS includes over 30 built-in shell commands implemented in `rust/src/comm
 
 #### `syscall`
 - **Syntax**: `syscall`
-- **Description**: Executes a direct software interrupt `int 0x80` test (`SYS_WRITE` to stdout) from inline assembly to verify ring transition and return codes.
+- **Description**: Invokes `int 0x80` from kernel context to exercise `SYS_WRITE` and `SYS_GETPID`. This command does not test a Ring 3 transition; see [Processes, Scheduling, and Ring 3](../kernel/processes.md) for the user-mode demo.
 
 #### `panic [message]`
 - **Syntax**: `panic [custom_message]`

@@ -1,6 +1,6 @@
 # Kernel Core Overview
 
-The Nyxara Kernel Core (`rust/src/`) is written in freestanding Rust (`#![no_std]`, `#![no_main]`), leveraging the language's safety guarantees to manage hardware resources, page tables, system calls, and virtual filesystems without an underlying C runtime or standard library.
+The Nyxara Kernel Core (`rust/src/`) is written in freestanding Rust (`#![no_std]`, `#![no_main]`), leveraging the language's safety guarantees to manage hardware resources, page tables, system calls, and virtual filesystems without an underlying C runtime or standard library. The process scheduler and Ring 3 proof-of-life task are described in [Processes, Scheduling, and Ring 3](processes.md); they are prototypes rather than complete process isolation.
 
 ## Entry Point Transition (`nyxara_rust_main`)
 

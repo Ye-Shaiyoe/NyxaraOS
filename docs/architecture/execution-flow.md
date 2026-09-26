@@ -53,6 +53,7 @@ This document details the lifecycle of Nyxara OS from computer power-on through 
 |    - vfs::init()      : Initialize RamFS with initial files       |
 |    - net::init()      : Initialize network configuration & ARP    |
 |    - vmm::test_vmm()  : Self-test identity and demand paging      |
+|    - process::init()  : Start scheduler and Ring 3 demo task      |
 +-------------------------------------------------------------------+
                                   |
 +-------------------------------------------------------------------+
@@ -92,3 +93,4 @@ This document details the lifecycle of Nyxara OS from computer power-on through 
 - C `kmain` executes all necessary hardware initialization while interrupts are cleanly managed.
 - After all drivers are verified over COM1 serial logging, `kmain` aligns the stack pointer to a 16-byte boundary complying with the System V i386 ABI before calling `nyxara_rust_main`.
 - Rust takes complete control over system memory allocation, paging tables, VFS state, and console interaction.
+- After VMM self-tests, `process::init()` starts the round-robin scheduler and creates demo tasks, including a Ring 3 task. This demonstrates a privilege transition and `int 0x80`, but does not provide per-process memory isolation. See [Processes, Scheduling, and Ring 3](../kernel/processes.md).

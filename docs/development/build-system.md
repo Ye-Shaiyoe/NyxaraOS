@@ -131,3 +131,14 @@ $(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN)
 | **Run Curses** | `make run-curses` | Starts QEMU directly inside terminal curses mode |
 | **Debug Mode** | `make debug` | Starts QEMU suspended (`-s -S`) waiting for GDB on port 1234 |
 | **Clean** | `make clean` | Removes `build/`, `nyxara.img`, and intermediate binaries |
+
+## Test Targets
+
+The Makefile currently exposes two host-run Rust test targets:
+
+| Target | Test file | Coverage |
+|---|---|---|
+| `make test-line-editor` | `tests/line_editor_test.rs` | Line editor behavior |
+| `make test-vfs` | `tests/vfs_test.rs` | In-memory VFS behavior |
+
+There is no aggregate `make test` target. The kernel also runs a VMM self-test during boot; QEMU smoke-test expectations are documented in [Testing Nyxara](testing.md).

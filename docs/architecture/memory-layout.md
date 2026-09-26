@@ -50,13 +50,14 @@ When paging is enabled (`CR0.PG = 1` and `CR3 = 0x00100000`), the 4 GB virtual a
 | Virtual Address Range | Size | Description | Attributes |
 |---|---|---|---|
 | `0x00000000 - 0x03FFFFFF` | 64 MB | Identity-mapped physical memory (Kernel code, data, heap, low hardware) | Supervisor, Read/Write, Present |
-| `0x04000000 - 0xBFFFFFFF` | ~3 GB | Reserved for future userland address space (Ring 3 code, data, user stacks) | User / Supervisor |
+| `0x04000000 - 0x04001FFF` | 8 KB | Ring 3 demo code (`0x04000000`) and user stack (`0x04001000`) | User; stack writable |
+| `0x04002000 - 0xBFFFFFFF` | Remainder | Not generally mapped; intended for future user processes | Unmapped by default |
 | `0xC0000000 - 0xC1000000` | 16 MB | Dedicated Demand Paging Region (Allocated on first access via Page Fault) | Supervisor, Read/Write, Dynamic |
 | `PhysBasePtr - PhysBasePtr+N` | Dynamic | VBE Linear Framebuffer video memory mapped 1:1 | Supervisor, Read/Write, Write-through |
 
 ## Global Descriptor Table (GDT) Segmentation
 
-The GDT provides flat 4 GB addressing across all segments, ensuring segment limits do not restrict virtual paging:
+The GDT provides flat 4 GB addressing across all segments, ensuring segment limits do not restrict virtual paging. The two user selectors exist, but the current demo shares the kernel's page directory; these mappings are not separate per-process address spaces. See [Processes, Scheduling, and Ring 3](../kernel/processes.md).
 
 | Selector | Name | Base | Limit | Priv | Type / Flags |
 |---|---|---|---|---|---|
@@ -65,7 +66,7 @@ The GDT provides flat 4 GB addressing across all segments, ensuring segment limi
 | `0x10` | Kernel Data Segment | `0x00000000` | `0xFFFFF` | Ring 0 | Read/Write, 32-bit, 4KB granularity |
 | `0x18` | User Code Segment | `0x00000000` | `0xFFFFF` | Ring 3 | Executable, Readable, 32-bit, 4KB granularity |
 | `0x20` | User Data Segment | `0x00000000` | `0xFFFFF` | Ring 3 | Read/Write, 32-bit, 4KB granularity |
-| `0x28` | Task State Segment (TSS) | Dynamic | sizeof(TSS) | Ring 0/3 | Present 32-bit TSS descriptor |
+| `0x28` | Task State Segment (TSS) | Dynamic | sizeof(TSS) - 1 | Ring 0 | Present, available 32-bit TSS descriptor |
 
 ## Memory Protection and Page Flags
 

@@ -40,41 +40,15 @@ The VBE Linear Framebuffer is mapped to ensure video memory writes bypass cache 
 
 ## Demand Paging Subsystem
 
-Nyxara supports dynamic demand paging within a reserved 16 MB virtual address window:
+Nyxara supports supervisor-only demand paging within a reserved 16 MB virtual address window:
 - **Range**: `0xC0000000` to `0xC1000000`.
-- When an instruction reads or writes to this range, the page table initially marks the page as not present (`P = 0`).
+- When a Ring 0 instruction reads or writes to an unmapped page in this range, the page table initially marks the page as not present (`P = 0`). The handler allocates a frame and maps it writable for the kernel.
 - The CPU immediately triggers an **ISR 14 Page Fault**.
+- A Ring 3 fault does not receive a user mapping from this handler; faults outside the supported supervisor demand-page case are fatal.
 
-### Page Fault Handler (`isr14_page_fault`)
+### Page Fault Handler (`page_fault_handler`)
 
-```rust
-extern "C" fn isr14_page_fault(regs: &mut Registers) {
-    let fault_addr = unsafe { read_cr2() };
-    let err_code = regs.err_code;
-
-    // Check if fault occurred within Demand Paging region
-    if fault_addr >= DEMAND_PAGING_START && fault_addr < DEMAND_PAGING_END {
-        // 1. Allocate a physical frame from PMM
-        let frame_phys = match pmm::alloc_frame() {
-            Some(addr) => addr,
-            None => panic!("Out of physical memory during demand paging!"),
-        };
-
-        // 2. Map the frame into the Page Directory / Page Table
-        unsafe {
-            map_demand_page(fault_addr, frame_phys);
-            invalidate_tlb(fault_addr); // invlpg instruction
-            DEMAND_PAGE_FAULTS += 1;
-        }
-
-        // Return from interrupt: CPU restarts the faulting instruction seamlessly
-        return;
-    }
-
-    // Unhandled crash outside demand region
-    panic!("Fatal Page Fault at {:#010X} (EIP: {:#010X})", fault_addr, regs.eip);
-}
-```
+The handler reads the faulting address from `CR2` and examines the CPU error code. It handles a non-present page fault only when the address is within the demand-paging range: it allocates and clears a frame, maps it supervisor-writable, invalidates the TLB entry, and returns so the CPU retries the instruction. Other page faults produce a diagnostic and halt the kernel.
 
 ## Activating Paging
 
@@ -93,4 +67,6 @@ During `vmm::init()`:
 
 ## Automated Verification (`test_vmm`)
 
-At boot time, `vmm::test_vmm()` verifies demand paging by writing known magic patterns (`0xDEADBEEF`, `0xCAFEBABE`) to unmapped addresses `0xC0000000` and `0xC0001000`. It confirms that the Page Fault handler allocates frames on-the-fly and resumes execution without crashing.
+At boot time, `vmm::test_vmm()` verifies identity mappings, writes `0x5A5A1234` to the previously unmapped address `0xC0002000`, checks the value and mapping, then tests manual mapping and unmapping at `0xD0001000`.
+
+The Ring 3 demo adds user mappings at `0x04000000` and `0x04001000` to the existing page directory. This is a single shared address space, not per-process isolation. See [Processes, Scheduling, and Ring 3](processes.md).

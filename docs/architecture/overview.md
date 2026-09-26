@@ -54,7 +54,7 @@ Nyxara is a hybrid 32-bit x86 Unix-like operating system designed around clean s
 | **Ring 0 (Supervisor)** | Assembly Glue | CPU initialization, GDT/IDT loading, CR0/CR4 control, interrupt vectoring |
 | **Ring 0 (Supervisor)** | HAL Drivers (C) | Direct device programming (I/O ports, PIC, PIT, UART, PCI, NIC) |
 | **Ring 0 (Supervisor)** | Kernel Core (Rust) | Paging tables (CR3), frame allocation, VFS, networking, line editor |
-| **Ring 3 (Userland - Target)** | User Tasks | Isolated processes executing via `int 0x80` syscall interface |
+| **Ring 3 (Prototype)** | User demo task | Enters through `iret` and calls the kernel through `int 0x80`; per-process isolation remains future work |
 
 ## Key Technical Specifications
 

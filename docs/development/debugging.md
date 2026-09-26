@@ -26,7 +26,7 @@ gdb -ex "target remote localhost:1234" -ex "symbol-file build/kernel.elf"
   b _start                 # Break at assembly entry point
   b kmain                  # Break at C entry point
   b nyxara_rust_main       # Break at Rust core entry point
-  b isr14_page_fault       # Break at Page Fault exception handler
+  b page_fault_handler     # Break at Page Fault exception handler
   b handle_command         # Break at shell command dispatcher
   ```
 - **Execution Control**:

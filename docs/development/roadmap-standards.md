@@ -36,7 +36,7 @@ The repository is divided into focused directories to separate responsibilities:
 | **`userland/`** | Planned. Standalone user applications and services executing outside supervisor mode. |
 | **`fs/`** | Planned. Persistent block storage filesystem drivers (ext2, FAT32). |
 | **`include/`** | Planned. Shared header files exposed to drivers and userland. |
-| **`tests/`** | Planned. Automated unit tests, integration tests, and emulator validation scripts. |
+| **`tests/`** | Active, partial. Host-run line editor and VFS tests; automated integration and emulator validation remain future work. |
 | **`tools/`** | Planned. Disk image packaging, asset generators, and development utilities. |
 | **`config/`** | Target architecture and build configuration files. |
 
@@ -45,14 +45,10 @@ The repository is divided into focused directories to separate responsibilities:
 ## Architectural Roadmap
 
 ### Phase 1: Preemptive Multitasking & Scheduler
-- **Process Control Block (PCB)**: Structure holding CPU registers, process ID (PID), task state (Ready, Running, Blocked, Zombie), and page directory reference.
-- **PIT Context Switch**: Hook IRQ 0 to perform preemptive round-robin thread switching by preserving and swapping stack frames.
-- **Kernel Threads**: Enable background worker threads for network socket polling and asynchronous tasks.
+**Status: Prototype implemented.** `rust/src/process.rs` has a fixed-size task table, Ready/Running/Blocked states, a five-tick round-robin quantum, sleep/wakeup, and IRQ-frame switching. It starts demo kernel tasks. Per-process page directories, Zombie state, resource cleanup, and production worker threads remain future work. See [Processes, Scheduling, and Ring 3](../kernel/processes.md).
 
 ### Phase 2: Ring 3 Userland Process Isolation
-- **TSS Configuration**: Complete stack switching mechanism (`ss0`, `esp0`) when transitioning from Ring 3 to Ring 0.
-- **User Memory Space**: Allocate isolated page directories for each process (`0x04000000..0xBFFFFFFF`) while sharing identity-mapped kernel supervisor pages.
-- **Full POSIX Syscall Integration**: Expand `int 0x80` to support `sys_fork`, `sys_execve`, `sys_waitpid`, and `sys_brk` (heap expansion).
+**Status: Privilege-transition demo implemented; process isolation incomplete.** The TSS, user selectors, DPL 3 syscall gate, and one Ring 3 demo task are present. The TSS still uses a fixed initial kernel stack, tasks share one page directory, and syscall pointers are not validated. Per-task `esp0`, isolated address spaces, and a complete syscall ABI remain future work.
 
 ### Phase 3: ELF Binary Executable Loader
 - Parse 32-bit ELF headers and program headers (`PT_LOAD`).

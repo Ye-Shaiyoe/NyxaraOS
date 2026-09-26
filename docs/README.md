@@ -31,7 +31,8 @@ Core operating system logic implemented in safe, idiomatic Rust with explicit FF
 - [Physical Memory Manager (PMM)](kernel/pmm.md) - Frame allocator using a bitmap, tracking physical memory pages (4KB).
 - [Virtual Memory Manager (VMM)](kernel/vmm.md) - Two-level x86 paging, identity mapping, demand paging, and ISR 14 page fault handling.
 - [Kernel Heap Allocator](kernel/heap.md) - Global allocator implementation enabling dynamic allocations (`alloc::vec`, `alloc::string`).
-- [Unix System Calls](kernel/syscalls.md) - Software interrupt `int 0x80`, ABI register conventions, and POSIX syscall handlers.
+- [Unix-like System Calls](kernel/syscalls.md) - Software interrupt `int 0x80`, ABI register conventions, and current implementation limits.
+- [Processes, Scheduler & Ring 3](kernel/processes.md) - Current task scheduler, TSS privilege transition, Ring 3 demo, and isolation limits.
 - [Virtual File System (VFS)](kernel/vfs.md) - Inode abstraction, RamFS in-memory filesystem, and device nodes (`/dev/tty`).
 
 ### 5. [Network Stack](networking/stack-overview.md)
@@ -52,4 +53,5 @@ Engineering workflow, compilation targets, debugging setups, and development sta
 - [Build System & Linker](development/build-system.md) - Multi-language Makefile targets, binary compilation pipeline, and `linker.ld` script.
 - [Prerequisites & Toolchain](development/prerequisites.md) - Cross-compilation tools (NASM, GCC, Rust target `i686-unknown-linux-gnu`, QEMU).
 - [Debugging Guide](development/debugging.md) - GDB remote targets, serial monitor capture, and diagnosing kernel panics.
+- [Testing Guide](development/testing.md) - Host tests, kernel self-tests, and QEMU smoke-test expectations.
 - [Standards & Roadmap](development/roadmap-standards.md) - Code quality rules, directory responsibilities, and future milestones.
