@@ -114,7 +114,12 @@ void isr_handler(registers_t* regs) {
 
 void irq_set_switch_frame(registers_t* regs, uint32_t stack_top) {
     switch_frame = regs;
-    irq_switch_stack = stack_top != 0 ? stack_top - 12 : 0;
+    if (stack_top == 0) {
+        irq_switch_stack = 0;
+        return;
+    }
+
+    irq_switch_stack = (regs->cs & 3) == 3 ? stack_top - 20 : stack_top - 12;
 }
 
 registers_t* irq_handler(registers_t* regs) {
