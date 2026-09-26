@@ -19,6 +19,11 @@ SECTIONS
         *(.text.*)
     }
 
+    .user_text : ALIGN(4K)
+    {
+        *(.user_text)
+    }
+
     .rodata : ALIGN(4K)
     {
         *(.rodata)
