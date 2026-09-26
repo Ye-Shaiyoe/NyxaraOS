@@ -74,10 +74,6 @@ pub fn init() {
             name: "shell",
         };
         NEXT_PID += 1;
-
-        spawn(demo_counter, "counter");
-        spawn(demo_worker, "worker");
-        spawn_user_demo();
         INITIALIZED = true;
     }
 
@@ -87,6 +83,7 @@ pub fn init() {
     );
 }
 
+#[allow(dead_code)]
 unsafe fn spawn(entry: extern "C" fn() -> !, name: &'static str) -> u32 {
     let slot = match TASKS.iter().position(|task| task.state == TaskState::Empty) {
         Some(slot) => slot,
@@ -118,6 +115,7 @@ unsafe fn spawn(entry: extern "C" fn() -> !, name: &'static str) -> u32 {
     pid
 }
 
+#[allow(dead_code)]
 unsafe fn spawn_user_demo() -> u32 {
     let code_size = (&user_demo_end as *const u8 as usize)
         .saturating_sub(&user_demo_start as *const u8 as usize);
@@ -292,26 +290,22 @@ pub fn print_tasks() {
     }
 }
 
+#[allow(dead_code)]
 extern "C" fn demo_counter() -> ! {
     unsafe {
         sti();
     }
-    let mut count = 0u64;
     loop {
-        count += 1;
-        if count % 10_000 == 0 {
-            crate::logln!("[task counter] iterations={}", count);
-        }
-        core::hint::spin_loop();
+        sleep(10_000);
     }
 }
 
+#[allow(dead_code)]
 extern "C" fn demo_worker() -> ! {
     unsafe {
         sti();
     }
     loop {
-        crate::logln!("[task worker] tick={}", tick_count());
-        sleep(50);
+        sleep(10_000);
     }
 }

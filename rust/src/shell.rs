@@ -149,8 +149,14 @@ pub fn run_shell() -> ! {
     let (mut prompt_x, mut prompt_y) = vga::get_cursor();
 
     loop {
-        while unsafe { !keyboard_has_char() } {
+        loop {
+            if unsafe { keyboard_has_char() } {
+                break;
+            }
             crate::net::poll();
+            if unsafe { keyboard_has_char() } {
+                break;
+            }
             unsafe {
                 core::arch::asm!("hlt");
             }
@@ -208,14 +214,8 @@ pub fn run_shell() -> ! {
                 redraw_line(prompt_x, prompt_y, &editor, 0);
             }
 
-            KEY_LEFT => {
-                editor.move_left();
-                redraw_line(prompt_x, prompt_y, &editor, editor.len());
-            }
-            KEY_RIGHT => {
-                editor.move_right();
-                redraw_line(prompt_x, prompt_y, &editor, editor.len());
-            }
+            KEY_LEFT => move_input_cursor(&mut editor, prompt_x, prompt_y, LineEditor::move_left),
+            KEY_RIGHT => move_input_cursor(&mut editor, prompt_x, prompt_y, LineEditor::move_right),
             KEY_SHIFT_LEFT => {
                 editor.extend_left();
                 redraw_line(prompt_x, prompt_y, &editor, editor.len());
@@ -234,20 +234,16 @@ pub fn run_shell() -> ! {
             }
 
             KEY_CTRL_LEFT => {
-                editor.move_word_left();
-                redraw_line(prompt_x, prompt_y, &editor, editor.len());
+                move_input_cursor(&mut editor, prompt_x, prompt_y, LineEditor::move_word_left)
             }
             KEY_CTRL_RIGHT => {
-                editor.move_word_right();
-                redraw_line(prompt_x, prompt_y, &editor, editor.len());
+                move_input_cursor(&mut editor, prompt_x, prompt_y, LineEditor::move_word_right)
             }
             KEY_HOME | KEY_CTRL_A => {
-                editor.move_home();
-                redraw_line(prompt_x, prompt_y, &editor, editor.len());
+                move_input_cursor(&mut editor, prompt_x, prompt_y, LineEditor::move_home)
             }
             KEY_END | KEY_CTRL_E => {
-                editor.move_end();
-                redraw_line(prompt_x, prompt_y, &editor, editor.len());
+                move_input_cursor(&mut editor, prompt_x, prompt_y, LineEditor::move_end)
             }
 
             KEY_UP => {
@@ -364,8 +360,35 @@ fn set_input_cursor(prompt_x: usize, prompt_y: usize, offset: usize) {
     }
 }
 
+fn move_input_cursor(editor: &mut LineEditor, prompt_x: usize, prompt_y: usize, op: fn(&mut LineEditor)) {
+    let had_selection = editor.selection().is_some();
+    op(editor);
+    if had_selection {
+        redraw_line(prompt_x, prompt_y, editor, editor.len());
+    } else {
+        set_input_cursor(prompt_x, prompt_y, editor.cursor());
+    }
+}
+
+fn draw_input_cell(prompt_x: usize, prompt_y: usize, offset: usize, ch: u8) {
+    if let Some((x, y)) = input_position(prompt_x, prompt_y, offset) {
+        vga::putchar_at(ch, vga::make_color(Color::White, Color::Black), x, y);
+    }
+}
+
 fn redraw_line(prompt_x: usize, prompt_y: usize, editor: &LineEditor, old_len: usize) {
     let len = editor.len();
+    if editor.selection().is_none() && old_len + 1 == len && editor.cursor() == len {
+        draw_input_cell(prompt_x, prompt_y, len - 1, editor.as_bytes()[len - 1]);
+        set_input_cursor(prompt_x, prompt_y, editor.cursor());
+        return;
+    }
+    if editor.selection().is_none() && old_len == len + 1 && editor.cursor() == len {
+        draw_input_cell(prompt_x, prompt_y, len, b' ');
+        set_input_cursor(prompt_x, prompt_y, editor.cursor());
+        return;
+    }
+
     let draw_len = len.max(old_len);
     let selection = editor.selection();
 

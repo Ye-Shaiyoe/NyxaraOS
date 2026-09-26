@@ -104,8 +104,8 @@ int rtl8139_init(void) {
     // Enable interrupts: ROK (0x01) and TOK (0x04)
     outw(io_base + RTL_REG_IMR, RTL_INT_ROK | RTL_INT_TOK);
 
-    // RCR: Accept Broadcast, Multicast, Physical match, All packets + Wrap
-    outl(io_base + RTL_REG_RCR, 0x0F | (1 << 7));
+    // RCR: Accept Broadcast, Multicast, Physical match + Wrap (not promiscuous)
+    outl(io_base + RTL_REG_RCR, 0x0E | (1 << 7));
 
     // Enable Transmit & Receive
     outb(io_base + RTL_REG_COMMAND, RTL_CMD_RE | RTL_CMD_TE);

@@ -4,7 +4,6 @@ use crate::framebuffer;
 extern "C" {
     fn vga_putchar(c: u8);
     fn vga_putchar_at(c: u8, color: u8, x: usize, y: usize);
-    fn serial_putchar(c: u8);
     fn vga_clear();
     fn vga_set_color(fg: u8, bg: u8);
     fn vga_backspace();
@@ -69,15 +68,11 @@ pub struct VgaWriter;
 impl Write for VgaWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for byte in s.bytes() {
-            if byte == b'\n' {
-                unsafe { serial_putchar(b'\r'); }
-            }
             if framebuffer::is_active() {
                 framebuffer::putchar(byte);
             } else {
                 unsafe { vga_putchar(byte); }
             }
-            unsafe { serial_putchar(byte); }
         }
         Ok(())
     }
