@@ -107,9 +107,21 @@ load_idt_asm:
     ret
 
 tss_flush_asm:
-    mov ax, 0x28 | 3            ; Index 5 in GDT (0x28), RPL 3
+    mov ax, 0x28                ; Index 5 in GDT
     ltr ax
     ret
+
+; Minimal Ring 3 proof-of-life. The function is copied to a user page before use.
+global user_demo_start
+global user_demo_end
+section .user_text
+user_demo_start:
+    mov eax, 20                 ; SYS_GETPID
+    int 0x80
+.loop:
+    pause
+    jmp .loop
+user_demo_end:
 
 ; ISR 128 (0x80 System Call)
 isr128:
@@ -252,6 +264,12 @@ irq_common_stub:
     mov [edx], ecx
     mov [edx + 4], edi
     mov [edx + 8], esi
+    test edi, 3
+    jz .use_saved_frame
+    mov ecx, [eax + 56]          ; User ESP
+    mov esi, [eax + 60]          ; User SS
+    mov [edx + 12], ecx
+    mov [edx + 16], esi
 
 .use_saved_frame:
     mov esp, eax
