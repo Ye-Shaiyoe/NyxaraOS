@@ -87,5 +87,7 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> i32 {
 }
 
 fn sys_getpid() -> i32 {
-    1 // init process PID
+    let pid = crate::process::current_pid() as i32;
+    crate::logln!("[Syscall] getpid -> {}", pid);
+    pid
 }
