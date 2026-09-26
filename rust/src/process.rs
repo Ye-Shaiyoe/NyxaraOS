@@ -4,6 +4,10 @@ use crate::syscall::Registers;
 const MAX_TASKS: usize = 8;
 const STACK_SIZE: usize = 4096;
 const QUANTUM_TICKS: u32 = 5;
+const USER_CODE_ADDR: usize = 0x04000000;
+const USER_STACK_ADDR: usize = 0x04001000;
+const USER_CODE_SELECTOR: u32 = 0x1B;
+const USER_DATA_SELECTOR: u32 = 0x23;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum TaskState {
@@ -54,6 +58,8 @@ extern "C" {
     fn irq_set_switch_frame(regs: *mut Registers, stack_top: u32);
     fn hlt();
     fn sti();
+    static user_demo_start: u8;
+    static user_demo_end: u8;
 }
 
 pub fn init() {
@@ -71,6 +77,7 @@ pub fn init() {
 
         spawn(demo_counter, "counter");
         spawn(demo_worker, "worker");
+        spawn_user_demo();
         INITIALIZED = true;
     }
 
@@ -108,6 +115,71 @@ unsafe fn spawn(entry: extern "C" fn() -> !, name: &'static str) -> u32 {
         ticks: 0,
         name,
     };
+    pid
+}
+
+unsafe fn spawn_user_demo() -> u32 {
+    let code_size = (&user_demo_end as *const u8 as usize)
+        .saturating_sub(&user_demo_start as *const u8 as usize);
+    if code_size == 0 || code_size > crate::vmm::PAGE_SIZE {
+        return 0;
+    }
+
+    let code_frame = match crate::pmm::alloc_frame() {
+        Some(frame) => frame,
+        None => return 0,
+    };
+    let stack_frame = match crate::pmm::alloc_frame() {
+        Some(frame) => frame,
+        None => return 0,
+    };
+
+    core::ptr::copy_nonoverlapping(
+        &user_demo_start as *const u8,
+        code_frame as *mut u8,
+        code_size,
+    );
+    core::ptr::write_bytes(stack_frame as *mut u8, 0, crate::vmm::PAGE_SIZE);
+
+    if crate::vmm::map_page(USER_CODE_ADDR, code_frame, crate::vmm::PAGE_USER).is_err()
+        || crate::vmm::map_page(
+            USER_STACK_ADDR,
+            stack_frame,
+            crate::vmm::PAGE_USER | crate::vmm::PAGE_WRITABLE,
+        )
+        .is_err()
+    {
+        return 0;
+    }
+
+    let slot = match TASKS.iter().position(|task| task.state == TaskState::Empty) {
+        Some(slot) => slot,
+        None => return 0,
+    };
+    let kernel_stack_top = STACKS[slot].0.as_ptr().add(STACK_SIZE) as usize;
+    let frame = (kernel_stack_top & !0xF).wrapping_sub(core::mem::size_of::<Registers>())
+        as *mut Registers;
+    core::ptr::write_bytes(frame as *mut u8, 0, core::mem::size_of::<Registers>());
+
+    (*frame).ds = USER_DATA_SELECTOR;
+    (*frame).eip = USER_CODE_ADDR as u32;
+    (*frame).cs = USER_CODE_SELECTOR;
+    (*frame).eflags = 0x202;
+    (*frame).useresp = (USER_STACK_ADDR + crate::vmm::PAGE_SIZE - 16) as u32;
+    (*frame).ss = USER_DATA_SELECTOR;
+
+    let pid = NEXT_PID;
+    NEXT_PID += 1;
+    TASKS[slot] = Task {
+        pid,
+        state: TaskState::Ready,
+        frame,
+        stack_top: kernel_stack_top as u32,
+        wake_at: 0,
+        ticks: 0,
+        name: "ring3-demo",
+    };
+    crate::logln!("[Process] Ring 3 demo task created (pid={}).", pid);
     pid
 }
 
