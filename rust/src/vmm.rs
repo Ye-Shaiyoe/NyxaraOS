@@ -233,6 +233,9 @@ pub fn map_page(virt_addr: usize, phys_addr: usize, flags: u32) -> Result<(), &'
             pd.entries[pd_idx] = pde_val;
             new_table_frame
         } else {
+            if (flags & PAGE_USER) != 0 {
+                pd.entries[pd_idx] |= PAGE_USER;
+            }
             (pde & PAGE_FRAME_MASK) as usize
         };
 
