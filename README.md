@@ -86,44 +86,12 @@
 ## 📁 Directory Structure
 
 ```text
-Nyxara/
-├── boot/
-│   ├── boot.asm             # MBR Bootloader (16-bit real mode -> 32-bit protected mode)
-│   └── kernel_entry.asm     # 32-bit Entry point, FPU/SSE setup & ISR stubs
-├── hal/
-│   ├── types.h              # Freestanding primitive typedefs & memory prototypes
-│   ├── string.c             # Freestanding memcpy, memset, memcmp, bcmp, strlen implementations
-│   ├── io.h / io.c          # Port I/O wrappers (inb, outb, inw, outw, cli, sti, hlt)
-│   ├── vga.h / vga.c        # VGA Text Console 80x25 driver
-│   ├── fb.h / fb.c          # VBE Linear Framebuffer detection & initialization
-│   ├── gdt.h / gdt.c        # Global Descriptor Table (GDT)
-│   ├── idt.h / idt.c        # Interrupt Descriptor Table (IDT) & PIC 8259 Remapping
-│   ├── isr.h / isr.c        # Interrupt Service Routines & Exception handlers
-│   ├── timer.h / timer.c    # PIT (Programmable Interval Timer) 100Hz
-│   ├── keyboard.h / keyboard.c # PS/2 Keyboard driver with ring buffer
-│   ├── mouse.h / mouse.c    # PS/2 Mouse driver (IRQ 12) & packet stream decoder
-│   ├── serial.h / serial.c  # UART 16550 Serial COM1 driver
-│   ├── pci.h / pci.c        # PCI Bus scanner & device discovery
-│   ├── rtl8139.h / rtl8139.c# RTL8139 Fast Ethernet NIC driver
-│   ├── rtc.h / rtc.c        # CMOS / RTC Real-Time Clock driver
-│   └── hal.h                # Unified HAL Master Header
-├── kernel/
-│   └── kmain.c              # C Kernel initialization & Rust bridge
-├── rust/
-│   ├── Cargo.toml           # Rust package configuration
-│   └── src/
-│       ├── lib.rs           # Rust kernel entry, panic handler, banner
-│       ├── vga.rs           # Safe VGA writer & print! macros
-│       ├── framebuffer.rs   # LFB TrueColor renderer & mouse cursor sprite
-│       ├── mouse.rs         # Safe Rust PS/2 mouse interface
-│       ├── serial.rs        # Safe Serial logger & log! macros
-│       ├── shell.rs         # Interactive line-buffered shell
-│       ├── editor.rs        # Full-screen text editor
-│       ├── net/             # Network stack (TCP, UDP, IPv4, DHCP, DNS, HTTP)
-│       └── commands.rs      # Command interpreter engine
-├── linker.ld                # Linker script (loaded at 0x10000)
-├── Makefile                 # Modular build system
-└── README.md                # Project documentation
+Projects/
+├── NyxaraOS/
+│   ├── boot
+│   └── kernel....
+├── NyxC/
+
 ```
 
 ---
