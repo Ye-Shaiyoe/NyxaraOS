@@ -71,18 +71,23 @@ pub extern "C" fn nyxara_rust_main() -> ! {
 
     pmm::init(32 * 1024 * 1024, k_start, k_end);
 
-    let heap_size = 4 * 1024 * 1024;
-    let heap_start = (k_end + 4095) & !4095;
+    // Reserve extended memory for VMM Page Tables & Kernel Stack (0x00100000..0x00140000)
+    for page in (0x100000 / pmm::PAGE_SIZE)..(0x140000 / pmm::PAGE_SIZE) {
+        pmm::reserve_frame(page * pmm::PAGE_SIZE);
+    }
+
+    // Heap must start ABOVE all reserved low memory regions:
+    // - VMM Page Tables: 0x100000..0x120000
+    // - Kernel Stack:    0x130000..0x140000
+    // Safe heap base: 0x200000 (2 MB mark)
+    let heap_base: usize = 0x200000;
+    let heap_start = heap_base.max((k_end + 4095) & !4095);
+    let heap_size = 6 * 1024 * 1024; // 6 MB heap
     let heap_end = heap_start + heap_size;
 
     let heap_start_page = heap_start / pmm::PAGE_SIZE;
     let heap_end_page = heap_end / pmm::PAGE_SIZE;
     for page in heap_start_page..heap_end_page {
-        pmm::reserve_frame(page * pmm::PAGE_SIZE);
-    }
-
-    // Reserve extended memory for VMM Page Tables & Kernel Stack (0x00100000..0x00140000)
-    for page in (0x100000 / pmm::PAGE_SIZE)..(0x140000 / pmm::PAGE_SIZE) {
         pmm::reserve_frame(page * pmm::PAGE_SIZE);
     }
 
@@ -95,6 +100,8 @@ pub extern "C" fn nyxara_rust_main() -> ! {
     } else {
         mouse::set_bounds(80, 25);
     }
+    // Clear screen again after VMM+FB init to erase any VBE boot artifacts / rainbow glitches
+    vga::clear_screen();
     logln!("[Rust] Initializing syscall layer...");
     syscall::init();
     logln!("[Rust] Initializing VFS...");
