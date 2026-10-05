@@ -448,6 +448,16 @@ fn complete_input(
                 candidates.push(String::from(name));
             }
         }
+        if let Ok(bin_entries) = crate::vfs::list_dir("/bin") {
+            for (bin_name, _, _) in bin_entries {
+                if bin_name.as_bytes().starts_with(prefix)
+                    && bin_name.len() > prefix.len()
+                    && !candidates.iter().any(|c| c == &bin_name)
+                {
+                    candidates.push(bin_name);
+                }
+            }
+        }
     } else {
         for (name, _) in crate::vfs::list_files() {
             if name.as_bytes().starts_with(prefix) && name.len() > prefix.len() {
