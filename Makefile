@@ -26,8 +26,7 @@ BOOT_BIN   := $(BUILD_DIR)/boot.bin
 KERNEL_BIN := $(BUILD_DIR)/kernel.bin
 KERNEL_ELF := $(BUILD_DIR)/kernel.elf
 RUST_LIB   := $(BUILD_DIR)/libnyxara_rust.a
-USER_PROGS := hello forktest
-USER_ELFS  := $(addprefix $(BUILD_DIR)/,$(addsuffix .elf,$(USER_PROGS)))
+USER_ELFS  := $(BUILD_DIR)/forktest.elf
 
 # Flags
 ASM_FLAGS  := -f elf32
@@ -133,15 +132,17 @@ $(BUILD_DIR)/kmain.o: $(KERN_DIR)/kmain.c $(HAL_DIR)/hal.h | $(BUILD_DIR)
 	$(CC) $(C_FLAGS) $< -o $@
 
 # 5. Build Userland ELF Programs
-$(BUILD_DIR)/hello.elf: ../NyxC/hello.nyx ../NyxC/Cargo.toml | $(BUILD_DIR)
-	cargo run --manifest-path ../NyxC/Cargo.toml -- build $< -o $@
+$(BUILD_DIR)/forktest.elf: $(USER_DIR)/forktest.asm $(USER_DIR)/user.ld | $(BUILD_DIR)
+	$(ASM) -f elf32 $< -o $(BUILD_DIR)/forktest.o
+	$(LD) -m elf_i386 -T $(USER_DIR)/user.ld -nostdlib -o $@ $(BUILD_DIR)/forktest.o
 
-$(BUILD_DIR)/%.elf: $(USER_DIR)/%.asm $(USER_DIR)/user.ld | $(BUILD_DIR)
-	$(ASM) -f elf32 $< -o $(BUILD_DIR)/$*.o
-	$(LD) -m elf_i386 -T $(USER_DIR)/user.ld -nostdlib -o $@ $(BUILD_DIR)/$*.o
+# Automatically compile all .nyx files and generate initrd.rs
+.PHONY: generate-initrd
+generate-initrd: $(BUILD_DIR)/forktest.elf | $(BUILD_DIR)
+	python3 tools/generate_initrd.py
 
 # 6. Build Rust Static Library
-$(RUST_LIB): $(RUST_SRCS) $(USER_ELFS) $(RUST_DIR)/Cargo.toml Makefile | $(BUILD_DIR)
+$(RUST_LIB): $(RUST_SRCS) generate-initrd $(RUST_DIR)/Cargo.toml Makefile | $(BUILD_DIR)
 	$(RUSTC) $(RUST_FLAGS) $(RUST_DIR)/src/lib.rs -o $@
 
 # 7. Link Assembly, C HAL, and Rust staticlib into Kernel ELF
