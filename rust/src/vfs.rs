@@ -160,6 +160,7 @@ pub fn init() {
     unsafe {
         *RAMFS.0.get() = Some(fs);
     }
+    sync_from_disk();
 }
 
 pub fn current_dir() -> String {
@@ -266,10 +267,20 @@ pub fn list_files() -> Vec<(String, usize)> {
         .collect()
 }
 
+fn is_ramfs_only(path: &str) -> bool {
+    path.starts_with("/tmp") || path.starts_with("/dev")
+}
+
 pub fn read_file(name: &str) -> Option<Vec<u8>> {
+    let cur = current_dir();
+    let path = normalize_path(&cur, name)?;
+    if crate::nyxfs::is_mounted() && !is_ramfs_only(&path) {
+        if let Some(data) = crate::nyxfs::read_file(&path) {
+            return Some(data);
+        }
+    }
     unsafe {
         let fs = (*RAMFS.0.get()).as_ref()?;
-        let path = normalize_path(&fs.current_dir, name)?;
         let inode = find_inode(fs, &path)?;
         if inode.inode_type != InodeType::File {
             return None;
@@ -279,9 +290,13 @@ pub fn read_file(name: &str) -> Option<Vec<u8>> {
 }
 
 pub fn remove_file(name: &str) -> Result<(), i32> {
+    let cur = current_dir();
+    let path = normalize_path(&cur, name).ok_or(-2)?;
+    if crate::nyxfs::is_mounted() && !is_ramfs_only(&path) {
+        let _ = crate::nyxfs::delete_file(&path);
+    }
     unsafe {
         let fs = (&mut *RAMFS.0.get()).as_mut().ok_or(-5)?;
-        let path = normalize_path(&fs.current_dir, name).ok_or(-2)?;
         let Some(index) = fs.files.iter().position(|inode| inode.name == path) else {
             return Err(-2);
         };
@@ -376,13 +391,19 @@ pub fn stat(path: &str) -> Option<(String, InodeType, usize)> {
 }
 
 pub fn write_file(name: &str, data: &[u8]) -> Result<(), i32> {
+    let cur = current_dir();
+    let path = normalize_path(&cur, name).ok_or(-22)?;
+    if path == "/" {
+        return Err(-2);
+    }
+    if crate::nyxfs::is_mounted() && !is_ramfs_only(&path) {
+        crate::nyxfs::write_file(&path, data)?;
+    }
     unsafe {
         let fs = (&mut *RAMFS.0.get()).as_mut().ok_or(-5)?;
-        let path = normalize_path(&fs.current_dir, name).ok_or(-22)?;
-        if path == "/" || !has_directory(fs, parent_path(&path)) {
-            return Err(-2);
+        if !has_directory(fs, parent_path(&path)) {
+            let _ = make_dir_p(parent_path(&path));
         }
-
         if let Some(inode) = fs.files.iter_mut().find(|inode| inode.name == path) {
             if inode.inode_type != InodeType::File {
                 return Err(-21);
@@ -391,12 +412,64 @@ pub fn write_file(name: &str, data: &[u8]) -> Result<(), i32> {
             inode.data.extend_from_slice(data);
             return Ok(());
         }
-
         fs.files.push(MemoryInode {
             name: path,
             inode_type: InodeType::File,
             data: data.to_vec(),
         });
         Ok(())
+    }
+}
+
+pub fn read_file_offset(name: &str, offset: usize, buf: &mut [u8]) -> Result<usize, i32> {
+    let cur = current_dir();
+    let path = normalize_path(&cur, name).ok_or(-2)?;
+    if crate::nyxfs::is_mounted() && !is_ramfs_only(&path) {
+        if let Ok(bytes) = crate::nyxfs::read_file_offset(&path, offset, buf) {
+            return Ok(bytes);
+        }
+    }
+    unsafe {
+        let fs = (*RAMFS.0.get()).as_ref().ok_or(-5)?;
+        let inode = find_inode(fs, &path).ok_or(-2)?;
+        if inode.inode_type != InodeType::File {
+            return Err(-21);
+        }
+        inode.read(offset, buf)
+    }
+}
+
+pub fn write_file_ramfs_only(path: &str, data: &[u8]) -> Result<(), i32> {
+    unsafe {
+        let fs = (&mut *RAMFS.0.get()).as_mut().ok_or(-5)?;
+        if !has_directory(fs, parent_path(path)) {
+            let _ = make_dir_p(parent_path(path));
+        }
+        if let Some(inode) = fs.files.iter_mut().find(|inode| inode.name == path) {
+            inode.data.clear();
+            inode.data.extend_from_slice(data);
+            return Ok(());
+        }
+        fs.files.push(MemoryInode {
+            name: String::from(path),
+            inode_type: InodeType::File,
+            data: data.to_vec(),
+        });
+        Ok(())
+    }
+}
+
+pub fn sync_from_disk() {
+    if crate::nyxfs::is_mounted() {
+        let entries = crate::nyxfs::list_root();
+        for (name, entry_type, _) in entries {
+            if entry_type == crate::nyxfs::dir::TYPE_FILE {
+                if let Some(data) = crate::nyxfs::read_file(&name) {
+                    let _ = write_file_ramfs_only(&name, &data);
+                }
+            } else if entry_type == crate::nyxfs::dir::TYPE_DIR {
+                let _ = make_dir_p(&name);
+            }
+        }
     }
 }
