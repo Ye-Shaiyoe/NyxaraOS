@@ -69,20 +69,18 @@ _start:
     ; Inisialisasi unit FPU
     fninit
 
-    ; Panggil fungsi utama C kernel dengan pointer BootInfo (0x9000)
+    ; Panggil fungsi (0x9000)
     push 0x9000
     call kmain
     add esp, 4
 
-    ; Jika kmain kembali, lakukan halt CPU
 .hang:
     cli
     hlt
     jmp .hang
 
-; ------------------------------------------------------------------------------
+
 ; GDT Loader Helper
-; ------------------------------------------------------------------------------
 load_gdt_asm:
     mov eax, [esp + 4]          ; Pointer ke GDT descriptor
     lgdt [eax]
