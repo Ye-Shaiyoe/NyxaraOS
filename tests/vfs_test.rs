@@ -2,6 +2,21 @@
 
 extern crate alloc;
 
+#[macro_export]
+macro_rules! logln {
+    ($($arg:tt)*) => {};
+}
+
+pub mod disk {
+    pub const SECTOR_SIZE: usize = 512;
+    pub fn is_available() -> bool { false }
+    pub fn read_sector(_lba: u32, _buf: &mut [u8; SECTOR_SIZE]) -> bool { false }
+    pub fn write_sector(_lba: u32, _buf: &[u8; SECTOR_SIZE]) -> bool { false }
+}
+
+#[path = "../fs/nyxfs/mod.rs"]
+pub mod nyxfs;
+
 #[path = "../rust/src/vfs.rs"]
 mod vfs;
 
