@@ -5,8 +5,10 @@ extern crate alloc;
 
 pub mod commands;
 pub mod cpu;
+pub mod disk;
 pub mod editor;
 pub mod elf;
+pub mod fd;
 pub mod font;
 pub mod framebuffer;
 pub mod heap;
@@ -14,6 +16,8 @@ pub mod initrd;
 pub mod line_editor;
 pub mod mouse;
 pub mod net;
+#[path = "../../fs/nyxfs/mod.rs"]
+pub mod nyxfs;
 pub mod pmm;
 pub mod process;
 pub mod serial;
@@ -104,6 +108,12 @@ pub extern "C" fn nyxara_rust_main() -> ! {
     vga::clear_screen();
     logln!("[Rust] Initializing syscall layer...");
     syscall::init();
+    logln!("[Rust] Detecting ATA storage...");
+    disk::init();
+    if disk::is_available() {
+        logln!("[Rust] Mounting NyxFS persistent filesystem...");
+        nyxfs::init(0);
+    }
     logln!("[Rust] Initializing VFS...");
     vfs::init();
     logln!("[Rust] Registering embedded userland programs...");
