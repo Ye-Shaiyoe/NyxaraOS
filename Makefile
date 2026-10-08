@@ -22,6 +22,7 @@ USER_DIR  := userland
 
 # Target Files
 OS_IMAGE   := nyxara.img
+DISK_IMG   := nyxara_disk.img
 BOOT_BIN   := $(BUILD_DIR)/boot.bin
 KERNEL_BIN := $(BUILD_DIR)/kernel.bin
 KERNEL_ELF := $(BUILD_DIR)/kernel.elf
@@ -55,13 +56,14 @@ C_OBJS := $(BUILD_DIR)/string.o \
           $(BUILD_DIR)/rtc.o \
           $(BUILD_DIR)/fb.o \
           $(BUILD_DIR)/mouse.o \
+          $(BUILD_DIR)/ata.o \
           $(BUILD_DIR)/kmain.o
 
 # Rust Source Files
-RUST_SRCS := $(shell find $(RUST_DIR)/src -name '*.rs')
+RUST_SRCS := $(shell find $(RUST_DIR)/src fs -name '*.rs')
 
 # Default Target
-all: $(OS_IMAGE)
+all: $(OS_IMAGE) $(DISK_IMG)
 
 .PHONY: test-line-editor test-vfs
 
@@ -127,6 +129,9 @@ $(BUILD_DIR)/fb.o: $(HAL_DIR)/fb.c $(HAL_DIR)/fb.h $(HAL_DIR)/serial.h $(HAL_DIR
 $(BUILD_DIR)/mouse.o: $(HAL_DIR)/mouse.c $(HAL_DIR)/mouse.h $(HAL_DIR)/io.h $(HAL_DIR)/isr.h $(HAL_DIR)/serial.h $(HAL_DIR)/types.h | $(BUILD_DIR)
 	$(CC) $(C_FLAGS) $< -o $@
 
+$(BUILD_DIR)/ata.o: $(HAL_DIR)/ata.c $(HAL_DIR)/ata.h $(HAL_DIR)/io.h $(HAL_DIR)/serial.h $(HAL_DIR)/types.h | $(BUILD_DIR)
+	$(CC) $(C_FLAGS) $< -o $@
+
 # 4. Build C Kernel Main
 $(BUILD_DIR)/kmain.o: $(KERN_DIR)/kmain.c $(HAL_DIR)/hal.h | $(BUILD_DIR)
 	$(CC) $(C_FLAGS) $< -o $@
@@ -159,30 +164,40 @@ $(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN)
 	truncate -s 1474560 $(OS_IMAGE)
 	@echo "\n>>> Nyxara OS Image successfully built: $(OS_IMAGE) (1.44 MB) <<<\n"
 
-QEMU_NET := -netdev user,id=net0 -device rtl8139,netdev=net0
-QEMU_VGA := -vga std
+# 10. Create Persistent NyxFS Virtual Hard Disk (1.44MB)
+$(DISK_IMG):
+	dd if=/dev/zero of=$(DISK_IMG) bs=512 count=2880
+	@echo "\n>>> Created persistent storage image: $(DISK_IMG) (1.44 MB) <<<\n"
+
+QEMU_DRIVES := -drive file=$(OS_IMAGE),format=raw,index=0,media=disk -drive file=$(DISK_IMG),format=raw,index=1,media=disk
+QEMU_NET    := -netdev user,id=net0 -device rtl8139,netdev=net0
+QEMU_VGA    := -vga std
 
 # Run in QEMU (GUI)
-run: clean
+run: clean $(DISK_IMG)
 	$(MAKE) $(OS_IMAGE)
-	qemu-system-i386 -drive file=$(OS_IMAGE),format=raw $(QEMU_VGA) $(QEMU_NET)
+	qemu-system-i386 $(QEMU_DRIVES) $(QEMU_VGA) $(QEMU_NET)
 
 # Run in QEMU with Serial output directed to terminal stdio
-run-serial: clean
+run-serial: clean $(DISK_IMG)
 	$(MAKE) $(OS_IMAGE)
-	qemu-system-i386 -drive file=$(OS_IMAGE),format=raw $(QEMU_VGA) -serial stdio $(QEMU_NET)
+	qemu-system-i386 $(QEMU_DRIVES) $(QEMU_VGA) -serial stdio $(QEMU_NET)
 
 # Run in QEMU with Curses text console mode
-run-curses: clean
+run-curses: clean $(DISK_IMG)
 	$(MAKE) $(OS_IMAGE)
-	qemu-system-i386 -drive file=$(OS_IMAGE),format=raw -curses $(QEMU_NET)
+	qemu-system-i386 $(QEMU_DRIVES) -curses $(QEMU_NET)
 
 # Run in QEMU with GDB Debug Server (waiting on port 1234)
-debug: $(OS_IMAGE)
-	qemu-system-i386 -drive file=$(OS_IMAGE),format=raw -s -S -serial stdio $(QEMU_NET)
+debug: $(OS_IMAGE) $(DISK_IMG)
+	qemu-system-i386 $(QEMU_DRIVES) -s -S -serial stdio $(QEMU_NET)
 
-# Clean build artifacts
+# Clean build artifacts (keeps nyxara_disk.img intact for persistence)
 clean:
 	rm -rf $(BUILD_DIR) $(OS_IMAGE) *.bin *.o akromos.img
 
-.PHONY: all run run-serial run-curses debug clean
+# Wipe persistent disk image
+clean-disk:
+	rm -f $(DISK_IMG)
+
+.PHONY: all run run-serial run-curses debug clean clean-disk
