@@ -41,6 +41,7 @@ struct Task {
     wait_status: u32,
     woken: i32,
     exit_code: i32,
+    fds: crate::fd::FdTable,
 }
 
 impl Task {
@@ -59,16 +60,23 @@ impl Task {
             wait_status: 0,
             woken: 0,
             exit_code: 0,
+            fds: crate::fd::FdTable::new(),
         }
     }
 }
 
-#[derive(Copy, Clone)]
-#[repr(C, align(16))]
-struct TaskStack([u8; STACK_SIZE]);
-
 static mut TASKS: [Task; MAX_TASKS] = [Task::empty(); MAX_TASKS];
-static mut STACKS: [TaskStack; MAX_TASKS] = [TaskStack([0; STACK_SIZE]); MAX_TASKS];
+static mut TASK_STACKS: [usize; MAX_TASKS] = [0; MAX_TASKS];
+
+fn get_stack_top(slot: usize) -> usize {
+    unsafe {
+        if TASK_STACKS[slot] == 0 {
+            let frame = crate::pmm::alloc_frame().expect("No physical frame for task stack");
+            TASK_STACKS[slot] = frame;
+        }
+        TASK_STACKS[slot] + STACK_SIZE
+    }
+}
 static mut CURRENT: usize = 0;
 static mut NEXT_PID: u32 = 1;
 static mut QUANTUM: u32 = QUANTUM_TICKS;
@@ -136,7 +144,7 @@ pub fn init() {
 }
 
 fn build_user_frame(slot: usize, eip: usize) -> *mut Registers {
-    let stack_top = unsafe { STACKS[slot].0.as_ptr().add(STACK_SIZE) as usize };
+    let stack_top = get_stack_top(slot);
     let frame =
         (stack_top & !0xF).wrapping_sub(core::mem::size_of::<Registers>()) as *mut Registers;
     unsafe {
@@ -160,7 +168,7 @@ fn register_task(slot: usize, parent_pid: u32, page_dir: usize, frame: *mut Regi
             parent_pid,
             state: TaskState::Ready,
             frame,
-            stack_top: STACKS[slot].0.as_ptr().add(STACK_SIZE) as u32,
+            stack_top: get_stack_top(slot) as u32,
             page_dir: page_dir as u32,
             name: *name,
             ..Task::empty()
@@ -205,7 +213,7 @@ unsafe fn spawn(entry: extern "C" fn() -> !, name: &'static str) -> u32 {
         None => return 0,
     };
 
-    let stack_top = STACKS[slot].0.as_ptr().add(STACK_SIZE) as usize;
+    let stack_top = get_stack_top(slot);
     let frame =
         (stack_top & !0xF).wrapping_sub(core::mem::size_of::<Registers>()) as *mut Registers;
     core::ptr::write_bytes(frame as *mut u8, 0, core::mem::size_of::<Registers>());
@@ -268,7 +276,7 @@ unsafe fn spawn_user_demo() -> u32 {
         Some(slot) => slot,
         None => return 0,
     };
-    let stack_top = STACKS[slot].0.as_ptr().add(STACK_SIZE) as usize;
+    let stack_top = get_stack_top(slot);
     let frame =
         (stack_top & !0xF).wrapping_sub(core::mem::size_of::<Registers>()) as *mut Registers;
     core::ptr::write_bytes(frame as *mut u8, 0, core::mem::size_of::<Registers>());
@@ -341,7 +349,7 @@ pub fn fork_current(regs: &Registers) -> i32 {
         None => return ENOMEM,
     };
 
-    let stack_top = unsafe { STACKS[slot].0.as_ptr().add(STACK_SIZE) as usize };
+    let stack_top = get_stack_top(slot);
     let frame =
         (stack_top & !0xF).wrapping_sub(core::mem::size_of::<Registers>()) as *mut Registers;
     unsafe {
@@ -457,6 +465,7 @@ pub fn exit_current(code: i32) -> ! {
         if page_dir != 0 {
             destroy_address_space(page_dir as usize);
         }
+        TASKS[cur].fds.close_all();
         TASKS[cur].exit_code = code;
         TASKS[cur].state = if reaped_by_parent {
             TaskState::Empty
@@ -749,5 +758,25 @@ extern "C" fn demo_worker() -> ! {
     }
     loop {
         sleep(10_000);
+    }
+}
+
+pub fn current_open(path: &str, flags: u32) -> Result<i32, i32> {
+    unsafe { TASKS[CURRENT].fds.open(path, flags) }
+}
+
+pub fn current_close(fd: i32) -> Result<(), i32> {
+    unsafe { TASKS[CURRENT].fds.close(fd) }
+}
+
+pub fn current_fd_get(fd: i32) -> Option<crate::fd::FileDesc> {
+    unsafe { TASKS[CURRENT].fds.get(fd).copied() }
+}
+
+pub fn current_fd_advance(fd: i32, count: usize) {
+    unsafe {
+        if let Some(desc) = TASKS[CURRENT].fds.get_mut(fd) {
+            desc.offset += count;
+        }
     }
 }
