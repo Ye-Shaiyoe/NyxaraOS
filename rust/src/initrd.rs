@@ -16,6 +16,8 @@ static PROGRAMS: &[(&str, &[u8])] = &[
     ("syscall", include_bytes!("../../build/07_syscall.elf")),
     ("08_perkenalan", include_bytes!("../../build/08_perkenalan.elf")),
     ("perkenalan", include_bytes!("../../build/08_perkenalan.elf")),
+    ("09_struct", include_bytes!("../../build/09_struct.elf")),
+    ("struct", include_bytes!("../../build/09_struct.elf")),
     ("hello", include_bytes!("../../build/hello.elf")),
 ];
 
