@@ -1,6 +1,6 @@
 # Nyxara
 
-**Nyxara** is a modern hybrid operating system built from scratch for **x86 (32-bit Protected Mode)** architecture, combining the reliability of **C & Assembly** at the *Hardware Abstraction Layer (HAL)* level with the memory safety and systemic capabilities of **Rust (`no_std`)** at the *Kernel Core & Shell Subsystem* level.
+**Nyxara** is a modern hybrid operating system built from scratch for **x86 (32-bit Protected Mode)** architecture, combining the reliability of **C & Assembly** at the *Hardware Abstraction Layer (HAL)* level with the memory safety and systemic capabilities of **Rust (`no_std`)** at the *Kernel Core & Shell Subsystem* level..
 
 ---
 
