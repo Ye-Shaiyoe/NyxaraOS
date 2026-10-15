@@ -34,6 +34,13 @@ At boot, `initrd::init()` copies each embedded program image into the RamFS as `
 
 - `hello` — compiled from `NyxC/hello.nyx` via the NyxC compiler, prints `"Hello from NyxC on NyxaraOS!\n"` via `sys::write(1, ...)` and exits 0.
 - `forktest` — `fork()`s; the child prints its pid and exits 42, the parent `waitpid()`s, prints the exit code, and exits 0.
+- `01_hello` through `09_struct` — NyxC learning programs embedded from `NyxC/Learning-NyxC/`.
+
+`10_globals` is kept in `NyxC/tests/` and is not auto-embedded. The kernel image
+must stay below the legacy VGA aperture at `0x000A0000`; otherwise the `.bss`
+ (including the heap allocator) ends up in VGA memory and is overwritten during
+ early boot. Add another auto-registered example only after checking that the new
+ kernel's `.bss` remains below that address.
 
 ## Process Life Cycle (`rust/src/process.rs`)
 
