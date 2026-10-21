@@ -35,6 +35,7 @@ Core operating system logic implemented in safe, idiomatic Rust with explicit FF
 - [Processes, Scheduler & Ring 3](kernel/processes.md) - Round-robin scheduler, per-task kernel stacks and TSS updates, Ring 3 transitions, and the task life cycle.
 - [Userland: ELF, fork & execve](kernel/userland.md) - ELF32 loader, per-process address spaces, initrd `/bin` programs, and the `fork`/`execve`/`exit`/`waitpid` life cycle.
 - [Virtual File System (VFS)](kernel/vfs.md) - Inode abstraction, RamFS in-memory filesystem, and device nodes (`/dev/tty`).
+- [ACPI Subsystem & Hardware Topology](kernel/acpi.md) - RSDP/RSDT discovery, MADT APIC topology, CPU counting, and ACPI reboot/poweroff.
 
 ### 5. [Network Stack](networking/stack-overview.md)
 Modular TCP/IP networking implementation from link layer to application services.
