@@ -1,4 +1,5 @@
 #include "../hal/hal.h"
+#include "acpi.h"
 
 // Rust entry point declaration
 extern void nyxara_rust_main(void);
@@ -40,7 +41,10 @@ void hal_init(boot_info_t* boot_info) {
     rtc_init();
     serial_puts("[Nyxara Kernel] RTC/CMOS driver initialized.\n");
 
-    // 10. Enable Interrupts (STI)
+    // 10. Initialize ACPI (RSDP, RSDT, FADT, MADT)
+    acpi_init();
+
+    // 11. Enable Interrupts (STI)
     sti();
     serial_puts("[Nyxara Kernel] Hardware interrupts enabled (STI).\n");
 }
