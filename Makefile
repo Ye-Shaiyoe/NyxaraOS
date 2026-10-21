@@ -57,6 +57,7 @@ C_OBJS := $(BUILD_DIR)/string.o \
           $(BUILD_DIR)/fb.o \
           $(BUILD_DIR)/mouse.o \
           $(BUILD_DIR)/ata.o \
+          $(BUILD_DIR)/acpi.o \
           $(BUILD_DIR)/kmain.o
 
 # Rust Source Files
@@ -132,8 +133,11 @@ $(BUILD_DIR)/mouse.o: $(HAL_DIR)/mouse.c $(HAL_DIR)/mouse.h $(HAL_DIR)/io.h $(HA
 $(BUILD_DIR)/ata.o: $(HAL_DIR)/ata.c $(HAL_DIR)/ata.h $(HAL_DIR)/io.h $(HAL_DIR)/serial.h $(HAL_DIR)/types.h | $(BUILD_DIR)
 	$(CC) $(C_FLAGS) $< -o $@
 
-# 4. Build C Kernel Main
-$(BUILD_DIR)/kmain.o: $(KERN_DIR)/kmain.c $(HAL_DIR)/hal.h | $(BUILD_DIR)
+# 4. Build C Kernel Modules
+$(BUILD_DIR)/acpi.o: $(KERN_DIR)/acpi.c $(KERN_DIR)/acpi.h $(HAL_DIR)/io.h $(HAL_DIR)/serial.h $(HAL_DIR)/types.h | $(BUILD_DIR)
+	$(CC) $(C_FLAGS) $< -o $@
+
+$(BUILD_DIR)/kmain.o: $(KERN_DIR)/kmain.c $(KERN_DIR)/acpi.h $(HAL_DIR)/hal.h | $(BUILD_DIR)
 	$(CC) $(C_FLAGS) $< -o $@
 
 # 5. Build Userland ELF Programs
